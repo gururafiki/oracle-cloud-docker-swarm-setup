@@ -1,0 +1,7 @@
+terraform/terraform.tfvars
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/swarm.plan
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/hosts
