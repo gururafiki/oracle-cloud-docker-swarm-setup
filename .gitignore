@@ -6,3 +6,4 @@ terraform/terraform.tfstate
 terraform/terraform.tfstate.backup
 terraform/hosts
 docker-compose/secrets.yaml
+ansible/inventory.ini
