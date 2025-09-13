@@ -5,3 +5,4 @@ terraform/swarm.plan
 terraform/terraform.tfstate
 terraform/terraform.tfstate.backup
 terraform/hosts
+docker-compose/secrets.yaml
