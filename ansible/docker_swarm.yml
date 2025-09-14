@@ -23,9 +23,9 @@
         url: https://download.docker.com/linux/ubuntu/gpg
         state: present
 
-    - name: Add Docker repository (AMD64)
+    - name: Add Docker repository
       apt_repository:
-        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        repo: "deb https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
         state: present
 
     - name: Install Docker
@@ -118,6 +118,7 @@
 
 - name: Create Docker Secrets from Control Environment
   hosts: manager
+  become: true
   tasks:
     - name: Read secrets.yaml file
       include_vars:
@@ -146,6 +147,7 @@
 
 - name: Deploy Application Stack
   hosts: manager
+  become: true
   tasks:
     - name: Copy docker-compose file
       copy:
@@ -153,4 +155,4 @@
         dest: /home/ubuntu/docker-compose.yaml
 
     - name: Deploy stack
-      command: "docker stack deploy -c /home/ubuntu/docker-compose.yaml kappex"
+      command: "docker stack deploy -c /home/ubuntu/docker-compose.yaml app"

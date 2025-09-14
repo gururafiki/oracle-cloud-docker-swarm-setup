@@ -136,9 +136,8 @@ cd ..
 
 ### 4. Run Ansible Playbook
 
-> *Imporant*: if you haven't connected to instances before over SSH - you may need to approve that you want to connect to unknown host.
+> *Imporant*: if you haven't connected to instances before over SSH - you may need to approve that you want to connect to unknown host. This can be mitigated by setting env variable: `ANSIBLE_HOST_KEY_CHECKING=false` or creating/updating `~/.ansible.cfg` with `host_key_checking = False`.
 > *Important*: `<ssh_private_key_path>` should point to private key that is that pair for `ssh_public_key_path` from terraform configuration.
-> *Important*: this playbook is written for AMD64 chips, it needs to be slightly changed for ARM chips if you are using them.
 
 ```bash
 cd ansible
@@ -148,7 +147,7 @@ cd ..
 e.g.
 ```bash
 cd ansible
-ansible-playbook -i inventory.ini docker_swarm.yml -u ubuntu --private-key ~/.ssh/oci_key
+export ANSIBLE_HOST_KEY_CHECKING=false && ansible-playbook -i inventory.ini docker_swarm.yml -u ubuntu --private-key ~/.ssh/oci_key
 cd ..
 ```
 
@@ -164,7 +163,7 @@ cd terraform && terraform apply -auto-approve && cd ../ansible && ./generate_inv
 ```
 e.g.
 ```bash
-cd terraform && terraform apply -auto-approve && cd ../ansible && ./generate_inventory.sh && ansible-playbook -i inventory.ini docker_swarm.yml -u ubuntu --private-key ~/.ssh/oci_key && cd ..
+cd terraform && terraform apply -auto-approve && cd ../ansible && ./generate_inventory.sh && export ANSIBLE_HOST_KEY_CHECKING=false && ansible-playbook -i inventory.ini docker_swarm.yml -u ubuntu --private-key ~/.ssh/oci_key && cd ..
 ```
 
 ### 6. Test your endpoints
