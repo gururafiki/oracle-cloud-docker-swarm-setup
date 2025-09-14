@@ -8,6 +8,14 @@
       apt:
         update_cache: yes
 
+    - name: Remove iptables-persistent
+      apt:
+        name: iptables-persistent
+        state: absent
+
+    - name: Flush iptables rules
+      command: iptables -F
+
     - name: Install dependencies
       apt:
         name:
@@ -38,23 +46,6 @@
         name: ubuntu
         groups: docker
         append: yes
-
-    - name: Install UFW firewall
-      apt:
-        name: ufw
-        state: present
-
-    - name: Remove iptables-persistent
-      apt:
-        name: iptables-persistent
-        state: absent
-
-    - name: Disable UFW temporarily
-      ufw: 
-        state: disabled
-
-    - name: Flush iptables rules
-      command: iptables -F
 
 - name: Initialize Swarm on Manager
   hosts: manager

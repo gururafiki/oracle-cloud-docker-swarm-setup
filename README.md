@@ -52,14 +52,13 @@ ansible/
 
 #### *docker_swarm.yml* - Playbook
 Ansible playbook for Unbuntu instances that:
-1. Installs necessary dependencies (Docker, UFW).
-2. *Important* Cleans iptables included in default Oracle images. Without this step you will be only able to connect to instances via SSH.
-3. Setups firewall rules using UFW. (TODO)
-4. Initializes 1 manager for a Docker Swarm.
-5. Joins all other instances as workers to Docker Swarm.
-6. Copies files needed for services to run (Mongo init script, Nginx configuration, etc)
-7. Creates secrets for the services.
-8. Deploys services from docker compose yaml configuration.
+* Installs necessary dependencies (Docker).
+* *Important* Cleans iptables included in default Oracle images. Without this step you will be only able to connect to instances via SSH.
+* Initializes 1 manager for a Docker Swarm.
+* Joins all other instances as workers to Docker Swarm.
+* Copies files needed for services to run (Mongo init script, Nginx configuration, etc)
+* Creates secrets for the services.
+* Deploys services from docker compose yaml configuration.
 
 
 #### *generate_inventory.sh* - Inventory generation script
@@ -71,9 +70,11 @@ We will use this script to read terraform outputs and convert them to *inventory
 
 ## Runbook
 
-### 1. Follow the [Step-by-step guide to create instances in Oracle Cloud using Terraform](terraform/README.md) to deploy your infrustructure
+### 1. Provision infrastructure in Oracle Cloud using Terraform
 
-> *Important*: if you update `operating_system` variable to different than Ubuntu - ansible playbook from this example won't work for you. You can make chaanges to it to support other operating systems (contributions are welcome).
+Follow the [Step-by-step guide to create instances in Oracle Cloud using Terraform](terraform/README.md) to deploy your infrustructure
+
+> *Important*: if you update `operating_system` variable to different than Ubuntu - ansible playbook from this example won't work for you. You can make changes to it to support other operating systems (contributions are welcome).
 
 ### 2. (Optional) Connect via SSH to created instances 
 
@@ -122,34 +123,11 @@ Then connect with:
 ssh swarm-node-1
 ```
 
-### 3. Generate Ansible Inventory
-```bash
-cd ansible
-chmod +x generate_inventory.sh
-./generate_inventory.sh
-cd ..
-```
+### 3.Configure your instances, create Docker Swarm and deploy containers using Ansible
 
-### 4. Prepare secrets
-1. Rename *docker-compose/secrets.example.yaml* to *docker-compose/secrets.yaml* and fill with desired values.
-2. Update *docker-compose/mongodb-init/mongo-init.js* to strong password for user we are going to create. (TODO: this should be moved to secrets as well, contributions are welcome)
+Follow the [Step-by-step guide to setup Docker Swarm cluster using Ansible](ansible/README.md)
 
-### 4. Run Ansible Playbook
-
-> *Imporant*: if you haven't connected to instances before over SSH - you may need to approve that you want to connect to unknown host. This can be mitigated by setting env variable: `ANSIBLE_HOST_KEY_CHECKING=false` or creating/updating `~/.ansible.cfg` with `host_key_checking = False`.
-> *Important*: `<ssh_private_key_path>` should point to private key that is that pair for `ssh_public_key_path` from terraform configuration.
-
-```bash
-cd ansible
-ansible-playbook -i inventory.ini docker_swarm.yml -u <user> --private-key <ssh_private_key_path>
-cd ..
-```
-e.g.
-```bash
-cd ansible
-export ANSIBLE_HOST_KEY_CHECKING=false && ansible-playbook -i inventory.ini docker_swarm.yml -u ubuntu --private-key ~/.ssh/oci_key
-cd ..
-```
+> *Important*: if you have updated `operating_system` variable from *terraform.tfvars* to different than Ubuntu - ansible playbook from this example won't work for you. You can make changes to it to support other operating systems (contributions are welcome).
 
 ### 5. (Optional) 🧪 Testing Reproducibility
 1. **Destroy cluster**:
@@ -158,12 +136,18 @@ cd terraform && terraform destroy -auto-approve && cd ..
 ```
 
 2. **Rebuild identical cluster**:
+We will add a little 30 sleep between provisioning infra and running ansible playbook to make sure instances started:
 ```bash
-cd terraform && terraform apply -auto-approve && cd ../ansible && ./generate_inventory.sh && ansible-playbook -i inventory.ini docker_swarm.yml -u <user> --private-key <ssh_private_key_path> && cd ..
+cd terraform && terraform apply -auto-approve && sleep 60s && cd ../ansible && ./generate_inventory.sh && ansible-playbook -i inventory.ini docker_swarm.yml -u <user> --private-key <ssh_private_key_path> && cd ..
 ```
 e.g.
 ```bash
-cd terraform && terraform apply -auto-approve && cd ../ansible && ./generate_inventory.sh && export ANSIBLE_HOST_KEY_CHECKING=false && ansible-playbook -i inventory.ini docker_swarm.yml -u ubuntu --private-key ~/.ssh/oci_key && cd ..
+cd terraform && terraform apply -auto-approve && sleep 60s && cd ../ansible && ./generate_inventory.sh && export ANSIBLE_HOST_KEY_CHECKING=false && ansible-playbook -i inventory.ini docker_swarm.yml -u ubuntu --private-key ~/.ssh/oci_key && cd ..
+```
+or combined to perform all together:
+```bash
+cd terraform && terraform destroy -auto-approve  && sleep 10s && terraform init -upgrade && terraform plan -out swarm.plan &&  terraform apply swarm.plan && sleep 60s && cd ../ansible && ./generate_inventory.sh && export ANSIBLE_HOST_KEY_CHECKING=false && ansible-playbook -i inventory.ini docker_swarm.yml -u ubuntu --private-key ~/.ssh/oci_key && cd ..
+
 ```
 
 ### 6. Test your endpoints
@@ -177,6 +161,16 @@ Below you can see the list of endpoints you can access:
 2. https://<public_ip>:9443 - HTTPS access to Portainer
 3. http://<public_ip>:9001 - HTTP Access to MiniO
 4. mongodb://root:mongo_root_password@<public_ip>:27017/ - MongoDB connection string
+
+
+## Troubleshooting
+
+### Can't join worker nodes to swarm / Can't connect to endpoint
+If you for some reason want to do setup of instances manually without Ansible Playbook - you will need to clean IP tables to allow traffic to ports other than 22:
+1. Remove iptables-persistent with `sudo apt remove iptables-persistent`
+2. Delete all existing iptables rules with `sudo iptables -F`
+3. List current iptables rules with `sudo iptables -L -n -v` to make sure the previous step was successful. All chains should show `ACCEPT` policies.
+4. (Optional) now you can install and configure your own firewall, e.g. UFW
 
 
 ---
