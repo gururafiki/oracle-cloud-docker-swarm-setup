@@ -120,3 +120,10 @@ terraform plan -out swarm.plan
 terraform apply swarm.plan
 ```
 
+Next time when you are going to update configuration use following commands to update plan and re-deploy:
+
+```bash
+terraform init -upgrade
+terraform plan -out swarm.plan
+terraform apply swarm.plan
+```
