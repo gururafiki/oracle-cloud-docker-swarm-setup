@@ -221,7 +221,7 @@ resource "oci_core_instance" "node" {
   compartment_id      = var.compartment_ocid
   availability_domain = data.oci_identity_availability_domains.ads.availability_domains[var.availability_domain].name
   shape               = var.shape
-  display_name        = "${var.name_prefix}-amd-node-${count.index}"
+  display_name        = "${var.name_prefix}-node-${count.index}"
   timeouts {
     create = "60m"
   }

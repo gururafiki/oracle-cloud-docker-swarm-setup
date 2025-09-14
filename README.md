@@ -131,7 +131,7 @@ cd ..
 ```
 
 ### 4. Prepare secrets
-1. Rename *secrets.example.yaml* to *docker-compose/secrets.yaml* and fill with desired values.
+1. Rename *docker-compose/secrets.example.yaml* to *docker-compose/secrets.yaml* and fill with desired values.
 2. Update *docker-compose/mongodb-init/mongo-init.js* to strong password for user we are going to create. (TODO: this should be moved to secrets as well, contributions are welcome)
 
 ### 4. Run Ansible Playbook
@@ -155,7 +155,7 @@ cd ..
 ### 5. (Optional) 🧪 Testing Reproducibility
 1. **Destroy cluster**:
 ```bash
-terraform destroy
+cd terraform && terraform destroy -auto-approve && cd ..
 ```
 
 2. **Rebuild identical cluster**:
