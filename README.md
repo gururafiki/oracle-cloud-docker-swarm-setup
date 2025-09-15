@@ -147,7 +147,6 @@ cd terraform && terraform apply -auto-approve && sleep 60s && cd ../ansible && .
 or combined to perform all together:
 ```bash
 cd terraform && terraform destroy -auto-approve  && sleep 10s && terraform init -upgrade && terraform plan -out swarm.plan &&  terraform apply swarm.plan && sleep 60s && cd ../ansible && ./generate_inventory.sh && export ANSIBLE_HOST_KEY_CHECKING=false && ansible-playbook -i inventory.ini docker_swarm.yml -u ubuntu --private-key ~/.ssh/oci_key && cd ..
-
 ```
 
 ### 6. Test your endpoints

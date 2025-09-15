@@ -55,17 +55,103 @@ services:
         constraints:
           - node.role == manager
 
+  # Dockploy services
+  dokploy-postgres:
+    image: postgres:16
+    networks:
+      - dokploy-network
+    environment:
+      POSTGRES_USER: dokployuser
+      POSTGRES_DB: dokploy
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      - postgres-database:/var/lib/postgresql/data
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+
+  dokploy-redis:
+    image: redis:7
+    networks:
+      - dokploy-network
+    volumes:
+      - redis-data-volume:/data
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+
+  dokploy:
+    image: dokploy/dokploy:latest
+    networks:
+      - dokploy-network
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/dokploy:/etc/dokploy
+      - dokploy-docker-config:/root/.docker
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgres://dokployuser:{{ postgres_password }}@dokploy-postgres:5432/dokploy
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      update_config:
+        parallelism: 1
+        order: stop-first
+
+  dokploy-traefik:
+    image: traefik:v3.5.0
+    networks:
+      - dokploy-network
+    volumes:
+      - /etc/dokploy/traefik/traefik.yml:/etc/traefik/traefik.yml
+      - /etc/dokploy/traefik/dynamic:/etc/dokploy/traefik/dynamic
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - published: 80
+        target: 80
+        protocol: tcp
+        mode: host
+      - published: 443
+        target: 443
+        protocol: tcp
+        mode: host
+      - published: 443
+        target: 443
+        protocol: udp
+        mode: host
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+
 volumes:
   mongodb_data:
   minio_data:
   portainer_data:
+  postgres-database:
+  redis-data-volume:
+  dokploy-docker-config:
 
 secrets:
   mongo_root_password:
     external: true
   minio_root_password:
     external: true
+  postgres_password:
+    external: true
 
 configs:
   mongo_init_script:
     file: ./mongodb-init/mongo-init.js
+
+networks:
+  dokploy-network:
+    driver: overlay
+    attachable: true
