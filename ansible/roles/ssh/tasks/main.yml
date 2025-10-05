@@ -1,0 +1,34 @@
+---
+# TODO: PermitRootLogin yes neededed only for swarm managers in order to setup as servers for dokploy
+- name: Replace /etc/ssh/sshd_config with secure pubkey-only configuration
+  copy:
+    dest: /etc/ssh/sshd_config
+    content: |
+      # SSHD Configuration - Secure for Pubkey Only
+      PermitRootLogin yes
+      PasswordAuthentication no
+      PubkeyAuthentication yes
+      ChallengeResponseAuthentication no
+      UsePAM yes
+      X11Forwarding no
+      AllowTcpForwarding no
+      PermitEmptyPasswords no
+      ClientAliveInterval 300
+      ClientAliveCountMax 2
+    owner: root
+    group: root
+    mode: "0600"
+    backup: yes
+
+# TODO: neededed only for swarm managers in order to setup as servers for dokploy
+# TODO: path to key should be parameterized or generated
+- name: Set authorized key for root user
+  ansible.posix.authorized_key:
+    user: root
+    state: present
+    key: "{{ lookup('file', '~/.ssh/oci_key.pub') }}"
+
+- name: Restart SSH
+  service:
+    name: ssh
+    state: restarted

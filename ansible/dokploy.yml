@@ -1,0 +1,22 @@
+---
+- hosts: all
+  become: true
+  gather_facts: true  # Enable fact gathering for all hosts
+  roles:
+    - oci-swarm-node
+
+- hosts: dokploy
+  become: true
+  roles:
+    - dokploy
+
+- hosts: manager
+  become: true
+  roles:
+    - swarm_manager
+    - dokploy_remote_server
+
+- hosts: workers
+  become: true
+  roles:
+    - swarm_worker

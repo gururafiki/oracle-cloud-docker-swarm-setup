@@ -1,0 +1,46 @@
+---
+- name: Remove FORWARD REJECT rule icmp-host-prohibited # Specific for default setup of Oracle Cloud Instances)
+  ansible.builtin.command: |
+    iptables -D FORWARD -j REJECT --reject-with icmp-host-prohibited
+  register: remove_result
+  ignore_errors: true  # Ignores deletion errors (|| true equivalent)
+
+- name: Check TCP port 2377 (Docker Swarm)
+  command: iptables -C INPUT -p tcp --dport 2377 -j ACCEPT
+  register: check_tcp2377
+  ignore_errors: true
+  changed_when: false
+
+- name: Insert TCP 2377 rule (Docker Swarm)
+  command: iptables -I INPUT 1 -p tcp --dport 2377 -j ACCEPT
+  when: check_tcp2377.rc != 0  # Only run if rule doesn't exist
+
+- name: Check UDP 7946 (Docker Swarm)
+  command: iptables -C INPUT -p udp --dport 7946 -j ACCEPT
+  register: check_udp7946
+  ignore_errors: true
+  changed_when: false
+
+- name: Insert UDP 7946 rule (Docker Swarm)
+  command: iptables -I INPUT 1 -p udp --dport 7946 -j ACCEPT
+  when: check_udp7946.rc != 0
+
+- name: Check TCP 7946 (Docker Swarm)
+  command: iptables -C INPUT -p tcp --dport 7946 -j ACCEPT
+  register: check_tcp7946
+  ignore_errors: true
+  changed_when: false
+
+- name: Insert TCP 7946 rule (Docker Swarm)
+  command: iptables -I INPUT 1 -p tcp --dport 7946 -j ACCEPT
+  when: check_tcp7946.rc != 0
+
+- name: Check UDP 4789 (Docker Swarm)
+  command: iptables -C INPUT -p udp --dport 4789 -j ACCEPT
+  register: check_udp4789
+  ignore_errors: true
+  changed_when: false
+
+- name: Insert UDP 4789 rule (Docker Swarm)
+  command: iptables -I INPUT 1 -p udp --dport 4789 -j ACCEPT
+  when: check_udp4789.rc != 0

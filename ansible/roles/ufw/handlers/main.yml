@@ -1,0 +1,5 @@
+---
+- name: Enable UFW firewall
+  ufw:
+    state: enabled
+  become: true

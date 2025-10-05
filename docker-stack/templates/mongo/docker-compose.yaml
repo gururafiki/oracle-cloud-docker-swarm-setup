@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    volumes:
+      - mongodb_data:/data/db
+    configs:
+      - source: mongo_init_script
+        target: /docker-entrypoint-initdb.d/mongo-init.js
+        mode: 0444
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD_FILE=/run/secrets/mongo_root_password
+    secrets:
+      - mongo_root_password
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh --quiet
+      interval: 5s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  mongodb_data:
+
+secrets:
+  mongo_root_password:
+    external: true
+
+configs:
+  mongo_init_script:
+    file: ./mongodb-init/mongo-init.js

@@ -1,70 +1,19 @@
 # Oracle Cloud Always Free Docker Swarm Setup
 Oracle Cloud Infrastructure setup using Terraform and Ansible to deploy performant Docker swarm (cluster of Docker daemons) using Always free resources.
 
-This repository contains a battle-tested solution using **Terraform + Ansible** to setup docker swarm cluster programmatically with 3 services:
-- [Portainer](https://www.portainer.io/) - container management
-- [MiniO](https://www.min.io/) - self-hosted blob-storage (S3 alternative)
-- [MongoDB](https://www.mongodb.com/) - no-SQL database
+This repository contains a battle-tested solution using **Terraform + Ansible** to setup Docker Swarm cluster and deploy various services to it.
 
 ## Package Overview
 ---
 
-### 🛠 Terraform Infrastructure as Code
-**File Structure**:
+### File Structure:
 ```bash
-oracle-swarm/
-├── main.tf                   # OCI resources
-├── variables.tf              # Variables definitions
-├── outputs.tf                # IP addresses for Ansible
-└── terraform.example.tfvars  # Example template for secrets and configuration variables
+oracle-cloud-docker-swarm-setup/
+├── terraform/                # Terraform Infrastructure as Code for Oracle Cloud to setup compute instances and network
+├── ansible/                  # Ansible Playbooks for Docker Swarm cluster creation and services deployment
+├── docker-stack/             # Docker Stack templates that can be run deployed to Docker Swarm Cluster
+└── docker-compose/           # Example template for secrets and configuration variables
 ```
-
-#### *main.tf* - Core Infrastructure:
-Contains defintion to setup:
-* VCN (Virtual Cloud Network)
-* Internet Gateway
-* Route table
-* Subnet
-* Security rules to allow traffic over the ports:
-  * used by services in *docker-compose/docker-compose.yaml*
-  * used by Docker Swarm
-  * HTTP/HTTPS ports for future load-balancer setup (TODO)
-* Instances
-
-#### *variables.tf* - Variables definitions:
-Contains defintion of varialbes, you can set default values there or define more varaibles prior to adding them to *terraform.tfvars*
-
-#### *outputs.tf* - For Ansible Inventory:
-Outputs instances Public/Private IPs that are later converted to Ansible invetory. 
-
-#### *terraform.example.tfvars* - Template for secrets and configuration variables:
-Template file for variables required for terraform deployment.
-
----
-
-### ⚙️ Ansible Configuration
-**File Structure**:
-```bash
-ansible/
-├── docker_swarm.yml       # Ansible Playbook
-└── generate_inventory.sh  # Bash script for inventory generation
-```
-
-#### *docker_swarm.yml* - Playbook
-Ansible playbook for Unbuntu instances that:
-* Installs necessary dependencies (Docker).
-* *Important* Cleans iptables included in default Oracle images. Without this step you will be only able to connect to instances via SSH.
-* Initializes 1 manager for a Docker Swarm.
-* Joins all other instances as workers to Docker Swarm.
-* Copies files needed for services to run (Mongo init script, Nginx configuration, etc)
-* Creates secrets for the services.
-* Deploys services from docker compose yaml configuration.
-
-
-#### *generate_inventory.sh* - Inventory generation script
-We will use this script to read terraform outputs and convert them to *inventory.ini* file that can be used by Anisble Playbook.
-
-> *Note*: Terraform has a plugin for Ansible: https://registry.terraform.io/providers/ansible/ansible/latest and Ansible has a plugin for terraform. Process of generating inventory for Ansible can be further automated. Contributions are welcome :D
 
 ---
 
@@ -129,24 +78,28 @@ Follow the [Step-by-step guide to setup Docker Swarm cluster using Ansible](ansi
 
 > *Important*: if you have updated `operating_system` variable from *terraform.tfvars* to different than Ubuntu - ansible playbook from this example won't work for you. You can make changes to it to support other operating systems (contributions are welcome).
 
-### 5. (Optional) 🧪 Testing Reproducibility
-1. **Destroy cluster**:
+### 4. (Optional) 🧪 Testing Reproducibility
+#### 1. Destroy cluster:
 ```bash
 cd terraform && terraform destroy -auto-approve && cd ..
 ```
 
-2. **Rebuild identical cluster**:
+#### 2. Rebuild identical cluster:
 We will add a little 30 sleep between provisioning infra and running ansible playbook to make sure instances started:
 ```bash
-cd terraform && terraform apply -auto-approve && sleep 60s && cd ../ansible && ./generate_inventory.sh && ansible-playbook -i inventory.ini docker_swarm.yml -u <user> --private-key <ssh_private_key_path> && cd ..
+cd terraform && terraform apply -auto-approve && sleep 60s && cd ../ansible && ./generate_inventory.sh && ansible-playbook -i inventory.ini <playbook>.yml -u <user> --private-key <ssh_private_key_path> && cd ..
 ```
 e.g.
 ```bash
-cd terraform && terraform apply -auto-approve && sleep 60s && cd ../ansible && ./generate_inventory.sh && export ANSIBLE_HOST_KEY_CHECKING=false && ansible-playbook -i inventory.ini docker_swarm.yml -u ubuntu --private-key ~/.ssh/oci_key && cd ..
+cd terraform && terraform apply -auto-approve && sleep 60s && cd ../ansible && ./generate_inventory.sh && export ANSIBLE_HOST_KEY_CHECKING=false && ansible-playbook -i inventory.ini portainer_stack.yml -u ubuntu --private-key ~/.ssh/oci_key && cd ..
 ```
 or combined to perform all together:
 ```bash
-cd terraform && terraform destroy -auto-approve  && sleep 10s && terraform init -upgrade && terraform plan -out swarm.plan &&  terraform apply swarm.plan && sleep 60s && cd ../ansible && ./generate_inventory.sh && export ANSIBLE_HOST_KEY_CHECKING=false && ansible-playbook -i inventory.ini docker_swarm.yml -u ubuntu --private-key ~/.ssh/oci_key && cd ..
+cd terraform && terraform destroy -auto-approve  && sleep 10s && terraform init -upgrade && terraform plan -out swarm.plan &&  terraform apply swarm.plan && sleep 60s && cd ../ansible && ./generate_inventory.sh && export ANSIBLE_HOST_KEY_CHECKING=false && ansible-playbook -i inventory.ini portainer_stack.yml -u ubuntu --private-key ~/.ssh/oci_key && cd ..
+```
+or the same combined, but for dokploy
+```bash
+cd terraform && terraform destroy -auto-approve  && sleep 10s && terraform init -upgrade && terraform plan -out swarm.plan &&  terraform apply swarm.plan && sleep 60s && cd ../ansible && ./generate_inventory.sh && export ANSIBLE_HOST_KEY_CHECKING=false && ansible-playbook -i dokploy_inventory.ini dokploy.yml -u ubuntu --private-key ~/.ssh/oci_key && cd ..
 ```
 
 ### 6. Test your endpoints
@@ -155,11 +108,11 @@ That's it. Now you can access your services using IP of any node from the swarm.
 
 > *Important note*: This setup Docker Swarm won't forward user's IP to your services, to solve this you can experiment with setting up your own load balancer and reverse proxy like traefik or nginx (contributions are welcome)
 
-Below you can see the list of endpoints you can access:
-1. http://<public_ip>:9080 - HTTP access to Portainer
-2. https://<public_ip>:9443 - HTTPS access to Portainer
-3. http://<public_ip>:9001 - HTTP Access to MiniO
-4. mongodb://root:mongo_root_password@<public_ip>:27017/ - MongoDB connection string
+Depending on playbook you selected you will be able to access different endpoints:
+1. For *dokploy.yml* -> http://<public_ip>:3000 - HTTP access to Dokploy
+2. For *portainer_stack.yml* http://<public_ip>:9080 - HTTP access to Portainer
+3. For *portainer_stack.yml* https://<public_ip>:9443 - HTTPS access to Portainer
+4. For *mongo_stack.yml* mongodb://root:mongo_root_password@<public_ip>:27017/ - MongoDB connection string
 
 
 ## Troubleshooting

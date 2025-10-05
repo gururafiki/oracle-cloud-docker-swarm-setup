@@ -1,3 +1,33 @@
+
+## 🛠 Terraform Infrastructure as Code Overview
+**File Structure**:
+```bash
+ansible/
+├── main.tf                   # OCI resources
+├── variables.tf              # Variables definitions
+├── outputs.tf                # IP addresses for Ansible
+└── terraform.example.tfvars  # Example template for secrets and configuration variables
+```
+
+#### *main.tf* - Core Infrastructure:
+Contains defintion to setup:
+* VCN (Virtual Cloud Network)
+* Internet Gateway
+* Route table
+* Subnet
+* Security rules to allow traffic over the ports (may require customization to meet your needs, currently exposes ports for MongoDB, Next.js server and HTTP/HTTPS)
+* Instances
+
+#### *variables.tf* - Variables definitions:
+Contains defintion of varialbes, you can set default values there or define more varaibles prior to adding them to *terraform.tfvars*
+
+#### *outputs.tf* - For Ansible Inventory:
+Outputs instances Public/Private IPs that are later converted to Ansible invetory. 
+
+#### *terraform.example.tfvars* - Template for secrets and configuration variables:
+Template file for variables required for terraform deployment.
+
+
 ## Step-by-step guide to create instances in Oracle Cloud using Terraform
 
 ### 1. Install Terraform

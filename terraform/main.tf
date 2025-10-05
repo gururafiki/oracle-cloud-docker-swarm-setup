@@ -55,15 +55,7 @@ resource "oci_core_security_list" "rules" {
     source   = "10.0.0.0/16"
   }
 
-  ingress_security_rules {
-    protocol = "6"
-    source   = "0.0.0.0/0"
-    tcp_options {
-      min = 22
-      max = 22
-    }
-  }
-  
+  # Default HTTP
   ingress_security_rules {
     protocol = "6"
     source   = "0.0.0.0/0"
@@ -72,34 +64,8 @@ resource "oci_core_security_list" "rules" {
       max = 80
     }
   }
-  
-  ingress_security_rules {
-    protocol = "6"
-    source   = "0.0.0.0/0"
-    tcp_options {
-      min = 443
-      max = 443
-    }
-  }
 
-  ingress_security_rules {
-    protocol = "6"
-    source   = "0.0.0.0/0"
-    tcp_options {
-      min = 2376
-      max = 2376
-    }
-  }
-  
-  ingress_security_rules {
-    protocol = "6"
-    source   = "0.0.0.0/0"
-    tcp_options {
-      min = 2377
-      max = 2377
-    }
-  }
-
+  # MongoDB
   ingress_security_rules {
     protocol = "6"
     source   = "0.0.0.0/0"
@@ -109,86 +75,23 @@ resource "oci_core_security_list" "rules" {
     }
   }
 
+  # Default HTTPS
   ingress_security_rules {
     protocol = "6"
     source   = "0.0.0.0/0"
     tcp_options {
-      min = 8000
-      max = 8000
+      min = 443
+      max = 443
     }
   }
 
-  ingress_security_rules {
-    protocol = "6"
-    source   = "0.0.0.0/0"
-    tcp_options {
-      min = 9000
-      max = 9000
-    }
-  }
-
-  ingress_security_rules {
-    protocol = "6"
-    source   = "0.0.0.0/0"
-    tcp_options {
-      min = 9001
-      max = 9001
-    }
-  }
-
-  ingress_security_rules {
-    protocol = "6"
-    source   = "0.0.0.0/0"
-    tcp_options {
-      min = 9080
-      max = 9080
-    }
-  }
-
+  # Next.js Dokploy Server
   ingress_security_rules {
     protocol = "6"
     source   = "0.0.0.0/0"
     tcp_options {
       min = 3000
       max = 3000
-    }
-  }
-
-  ingress_security_rules {
-    protocol = "6"
-    source   = "0.0.0.0/0"
-    tcp_options {
-      min = 9443
-      max = 9443
-    }
-  }
-  
-  # Container network discovery (TCP & UDP)
-  ingress_security_rules {
-    protocol = "6"
-    source   = "0.0.0.0/0"
-    tcp_options {
-      min = 7946
-      max = 7946
-    }
-  }
-  
-  ingress_security_rules {
-    protocol = "17"
-    source   = "0.0.0.0/0"
-    udp_options {
-      min = 7946
-      max = 7946
-    }
-  }
-  
-  # Overlay network traffic
-  ingress_security_rules {
-    protocol = "17"
-    source   = "0.0.0.0/0"
-    udp_options {
-      min = 4789
-      max = 4789
     }
   }
 }

@@ -1,0 +1,20 @@
+---
+# Copy the security script to the target machine
+- name: Copy setup script to target machine
+  copy:
+    src: "./dokploy/scripts/setup_server.sh" # Relative to the playbook.yml
+    dest: /home/ubuntu/setup_server.sh
+    owner: root
+    group: root
+    mode: 0755
+
+# Ensure the SSH security functions script is executable
+- name: Ensure the script is executable
+  file:
+    path: /home/ubuntu/setup_server.sh
+    owner: root
+    group: root
+    mode: 0755
+
+- name: Setup server
+  ansible.builtin.shell: yes | /home/ubuntu/setup_server.sh

@@ -1,0 +1,12 @@
+---
+- name: Get worker swarm status
+  command: docker info --format '{{"{{"}} .Swarm.LocalNodeState {{"}}"}}'
+  register: swarm_status
+  changed_when: false
+
+- name: Join swarm if not active
+  command: "docker swarm join --token {{ hostvars[groups['manager'][0]].manager_token }} {{ hostvars[groups['manager'][0]].private_ip }}:2377"
+  async: 120
+  poll: 0
+  when: swarm_status.stdout != "active"
+  register: swarm_join

@@ -1,0 +1,28 @@
+---
+- hosts: all
+  become: true
+  gather_facts: true  # Enable fact gathering for all hosts
+  roles:
+    - oci-swarm-node
+
+- hosts: manager
+  become: true
+  roles:
+    - swarm_manager
+
+- hosts: workers
+  become: true
+  roles:
+    - swarm_worker
+
+- name: Deploy Application Stack
+  hosts: manager
+  become: true
+  tasks:
+    - name: Copy docker-compose file
+      copy:
+        src: ../docker-stack/templates/portainer/docker-compose.yaml
+        dest: /home/ubuntu/docker-compose.yaml
+
+    - name: Deploy stack
+      command: "docker stack deploy -c /home/ubuntu/docker-compose.yaml portainer-app"

@@ -1,0 +1,32 @@
+---
+# TODO: Add support of multi-manager setup
+- name: Get swarm info
+  command: docker info --format '{{"{{"}} json .Swarm {{"}}"}}'
+  register: swarm_info
+  changed_when: false
+
+- name: Set swarm facts
+  set_fact:
+    swarm_state: "{{ (swarm_info.stdout | from_json).LocalNodeState }}"
+    is_manager: "{{ (swarm_info.stdout | from_json).ControlAvailable }}"
+
+- name: Leave existing swarm if active and not manager
+  command: "docker swarm leave --force"
+  when: swarm_state != "inactive" and not is_manager
+  ignore_errors: yes
+  changed_when: false
+
+- name: Initialize swarm if needed
+  command: "docker swarm init --advertise-addr {{ private_ip }} --listen-addr {{ private_ip }}"
+  when: swarm_state == "inactive" or not is_manager
+  register: swarm_init
+
+- name: Get worker join token
+  command: docker swarm join-token -q worker
+  register: join_token
+  changed_when: false
+
+- name: Set manager facts
+  set_fact:
+    manager_token: "{{ join_token.stdout | trim }}"
+    manager_private_ip: "{{ private_ip }}"

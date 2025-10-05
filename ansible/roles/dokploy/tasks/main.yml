@@ -1,0 +1,16 @@
+---
+- name: Check if Dokploy service exists
+  ansible.builtin.command: docker service inspect dokploy
+  register: dokploy_service_check
+  ignore_errors: yes
+  changed_when: false
+
+- name: Install Dokploy (update)
+  ansible.builtin.shell:
+    cmd: curl -sSL https://dokploy.com/install.sh | sh -s -- update
+  when: dokploy_service_check is succeeded
+
+- name: Install Dokploy (fresh)
+  ansible.builtin.shell:
+    cmd: curl -sSL https://dokploy.com/install.sh | sh
+  when: dokploy_service_check is failed

@@ -1,0 +1,36 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+- name: Install UFW firewall
+  apt:
+    name: ufw
+    state: present
+
+- name: Allow essential TCP ports
+  ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+  loop:
+    - 22  # SSH
+    - 80  # Default HTTP
+    - 443  # Default HTTPS
+    - 3000  # Next.js Dokploy Server for initial setup
+    - 996  # HTTPS connections for a Docker Registry
+    - 7946  # Docker Swarm
+    - 4789  # Docker Swarm
+    - 2377  # Docker Swarm
+    - 27017  # MongoDB
+
+- name: Allow essential UDP ports
+  ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: udp
+  loop:
+    - 22  # SSH
+    - 7946  # Docker Swarm
+    - 4789  # Docker Swarm
+    - 2377  # Docker Swarm

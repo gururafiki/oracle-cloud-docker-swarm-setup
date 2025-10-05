@@ -1,0 +1,6 @@
+---
+- name: Append FORWARD REJECT rule icmp-host-prohibited
+  command: iptables -A FORWARD -j REJECT --reject-with icmp-host-prohibited
+
+- name: Save iptables rules
+  shell: iptables-save > /etc/iptables/rules.v4

@@ -1,0 +1,27 @@
+---
+- name: Setup SSH
+  include_role:
+    name: ssh
+
+- name: Setup fail2ban
+  include_role:
+    name: fail2ban
+
+- name: Setup UFW
+  include_role:
+    name: ufw
+
+- name: Setup iptables for hosting Docker Swarm in Oracle Cloud
+  include_role:
+    name: iptables
+
+- name: Setup Docker
+  include_role:
+    name: docker
+
+- name: Finalize firewall setup
+  command: echo "Finalizing firewall setup"
+  notify:
+    - Append FORWARD REJECT rule icmp-host-prohibited
+    - Save iptables rules
+    - Enable UFW firewall
