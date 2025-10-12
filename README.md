@@ -87,19 +87,19 @@ cd terraform && terraform destroy -auto-approve && cd ..
 #### 2. Rebuild identical cluster:
 We will add a little 30 sleep between provisioning infra and running ansible playbook to make sure instances started:
 ```bash
-cd terraform && terraform apply -auto-approve && sleep 60s && cd ../ansible && ./generate_inventory.sh && ansible-playbook -i inventory.ini <playbook>.yml -u <user> --private-key <ssh_private_key_path> && cd ..
+cd terraform && terraform apply -auto-approve && sleep 60s && cd ../ansible && ./generate_inventory.sh default && ansible-playbook -i default.inventory.ini <playbook>.yml -u <user> --private-key <ssh_private_key_path> && cd ..
 ```
 e.g.
 ```bash
-cd terraform && terraform apply -auto-approve && sleep 60s && cd ../ansible && ./generate_inventory.sh && export ANSIBLE_HOST_KEY_CHECKING=false && ansible-playbook -i inventory.ini portainer_stack.yml -u ubuntu --private-key ~/.ssh/oci_key && cd ..
+cd terraform && terraform apply -auto-approve && sleep 60s && cd ../ansible && ./generate_inventory.sh default && export ANSIBLE_HOST_KEY_CHECKING=false && ansible-playbook -i default.inventory.ini portainer_stack.yml -u ubuntu --private-key ~/.ssh/oci_key && cd ..
 ```
 or combined to perform all together:
 ```bash
-cd terraform && terraform destroy -auto-approve  && sleep 10s && terraform init -upgrade && terraform plan -out swarm.plan &&  terraform apply swarm.plan && sleep 60s && cd ../ansible && ./generate_inventory.sh && export ANSIBLE_HOST_KEY_CHECKING=false && ansible-playbook -i inventory.ini portainer_stack.yml -u ubuntu --private-key ~/.ssh/oci_key && cd ..
+cd terraform && terraform destroy -auto-approve  && sleep 10s && terraform init -upgrade && terraform plan -out swarm.plan &&  terraform apply swarm.plan && sleep 60s && cd ../ansible && ./generate_inventory.sh default && export ANSIBLE_HOST_KEY_CHECKING=false && ansible-playbook -i default.inventory.ini portainer_stack.yml -u ubuntu --private-key ~/.ssh/oci_key && cd ..
 ```
-or the same combined, but for dokploy
+or the same combined, but for dokploy (make sure you have `[dokploy]` host defined in *inventory.ini*)
 ```bash
-cd terraform && terraform destroy -auto-approve  && sleep 10s && terraform init -upgrade && terraform plan -out swarm.plan &&  terraform apply swarm.plan && sleep 60s && cd ../ansible && ./generate_inventory.sh && export ANSIBLE_HOST_KEY_CHECKING=false && ansible-playbook -i dokploy_inventory.ini dokploy.yml -u ubuntu --private-key ~/.ssh/oci_key && cd ..
+cd terraform && terraform destroy -auto-approve  && sleep 10s && terraform init -upgrade && terraform plan -out swarm.plan &&  terraform apply swarm.plan && sleep 60s && cd ../ansible && ./generate_inventory.sh default && export ANSIBLE_HOST_KEY_CHECKING=false && ansible-playbook -i default.inventory.ini dokploy.yml -u ubuntu --private-key ~/.ssh/oci_key && cd ..
 ```
 
 ### 6. Test your endpoints

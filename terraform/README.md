@@ -6,7 +6,7 @@ ansible/
 ├── main.tf                   # OCI resources
 ├── variables.tf              # Variables definitions
 ├── outputs.tf                # IP addresses for Ansible
-└── terraform.example.tfvars  # Example template for secrets and configuration variables
+└── terraform.tfvars.example  # Example template for secrets and configuration variables
 ```
 
 #### *main.tf* - Core Infrastructure:
@@ -24,7 +24,7 @@ Contains defintion of varialbes, you can set default values there or define more
 #### *outputs.tf* - For Ansible Inventory:
 Outputs instances Public/Private IPs that are later converted to Ansible invetory. 
 
-#### *terraform.example.tfvars* - Template for secrets and configuration variables:
+#### *terraform.tfvars.example* - Template for secrets and configuration variables:
 Template file for variables required for terraform deployment.
 
 
@@ -58,7 +58,7 @@ echo 'export PATH="$PATH:/usr/local/bin"' >> ~/.zshrc # or ~/.bashrc depending o
 source ~/.zshrc
 ```
 
-### 2. Rename *terraform.example.tfvars* to *terraform.tfvars*
+### 2. Rename *terraform.tfvars.example* to *terraform.tfvars*
 
 ### 3. Obtain Terraform Variables to fill missing values in *terraform.tfvars* 
 
@@ -156,4 +156,43 @@ Next time when you are going to update configuration use following commands to u
 terraform init -upgrade
 terraform plan -out swarm.plan
 terraform apply swarm.plan
+```
+
+
+### (Optional) 4. Setting up multiple workspaces
+
+In some cases you would like to deploy resources to multiple environments/stages. To achive this you can use workspaces.
+
+#### 1. Move variables you want to configure per workspace to separate .tfvars file(s)
+For example we will create *playground.tfvars* with following variables:
+```hcl
+name_prefix = "playground"
+node_count = 1
+ocpus = 1
+memory_in_gbs = 3
+```
+and *prod.tfvars` with following variables:
+```hcl
+name_prefix = "prod"
+node_count = 3
+ocpus = 1
+memory_in_gbs = 7
+```
+
+#### 2. Create and deploy workspaces
+```bash
+terraform workspace new playground
+terraform apply -var-file="playground.tfvars"
+terraform workspace new prod
+terraform apply -var-file="prod.tfvars"
+```
+
+Later you will be able to switch between environments using:
+```bash
+terraform workspace select <workspace_name>
+```
+
+To check workspaces that already exists use:
+```bash
+terraform workspace list
 ```

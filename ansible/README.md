@@ -11,7 +11,7 @@ ansible/
 ```
 
 ### *generate_inventory.sh* - Inventory generation script
-We will use this script to read terraform outputs and convert them to *inventory.ini* file that can be used by Anisble Playbook.
+We will use this script to read terraform outputs and convert them to *inventory.ini* file(s) that can be used by Anisble Playbook.
 
 > *Note*: Terraform has a plugin for Ansible: https://registry.terraform.io/providers/ansible/ansible/latest and Ansible has a plugin for terraform. Process of generating inventory for Ansible can be further automated. Contributions are welcome :D
 
@@ -127,15 +127,16 @@ ansible --version
 # Should show: ansible [core 2.16.5]
 ```
 
-### Step 4: Create *inventory.ini*
+### Step 4: Create inventory (*inventory.ini*)
 
+This script has one positional argument which corresponds to terraform workspace name (default terraform workspace is called `default`)
 If you want to use instances created with terraform - generate inventory from terraform outputs:
 ```bash
 chmod +x generate_inventory.sh
-./generate_inventory.sh
+./generate_inventory.sh default
 ```
 
-#### Alternative is to generated inventory.ini for already existing instances
+#### Alternative is to generate *inventory.ini* for already existing instances
 Example:
 ```ini
 [manager]
@@ -168,11 +169,11 @@ Example:
 > *Important*: `<ssh_private_key_path>` should point to private key that is that pair for `ssh_public_key_path` from terraform configuration.
 
 ```bash
-ansible-playbook -i inventory.ini <selected_playbook.yml> -u <user> --private-key <ssh_private_key_path>
+ansible-playbook -i default.inventory.ini <selected_playbook.yml> -u <user> --private-key <ssh_private_key_path>
 cd ..
 ```
 e.g.
 ```bash
-export ANSIBLE_HOST_KEY_CHECKING=false && ansible-playbook -i inventory.ini dokploy.yml -u ubuntu --private-key ~/.ssh/oci_key
+export ANSIBLE_HOST_KEY_CHECKING=false && ansible-playbook -i default.inventory.ini portainer_stack.yml -u ubuntu --private-key ~/.ssh/oci_key
 cd ..
 ```
