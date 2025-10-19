@@ -67,3 +67,13 @@ variable "memory_in_gbs" {
   description = "RAM"
   type        = number
 }
+
+variable "public_tcp_ports" {
+  description = "Public TCP ports"
+  type        = set(number)
+}
+
+variable "public_udp_ports" {
+  description = "Public UDP ports"
+  type        = set(number)
+}

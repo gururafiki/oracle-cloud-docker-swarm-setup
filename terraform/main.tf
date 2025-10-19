@@ -55,43 +55,27 @@ resource "oci_core_security_list" "rules" {
     source   = "10.0.0.0/16"
   }
 
-  # Default HTTP
-  ingress_security_rules {
-    protocol = "6"
-    source   = "0.0.0.0/0"
-    tcp_options {
-      min = 80
-      max = 80
+  dynamic "ingress_security_rules" {
+    for_each = var.public_tcp_ports
+    content {
+      protocol = "6"
+      source   = "0.0.0.0/0"
+      tcp_options {
+        min = ingress_security_rules.value
+        max = ingress_security_rules.value
+      }
     }
   }
 
-  # MongoDB
-  ingress_security_rules {
-    protocol = "6"
-    source   = "0.0.0.0/0"
-    tcp_options {
-      min = 27017
-      max = 27017
-    }
-  }
-
-  # Default HTTPS
-  ingress_security_rules {
-    protocol = "6"
-    source   = "0.0.0.0/0"
-    tcp_options {
-      min = 443
-      max = 443
-    }
-  }
-
-  # Next.js Dokploy Server
-  ingress_security_rules {
-    protocol = "6"
-    source   = "0.0.0.0/0"
-    tcp_options {
-      min = 3000
-      max = 3000
+  dynamic "ingress_security_rules" {
+    for_each = var.public_udp_ports
+    content {
+      protocol = "17"
+      source   = "0.0.0.0/0"
+      udp_options {
+        min = ingress_security_rules.value
+        max = ingress_security_rules.value
+      }
     }
   }
 }
