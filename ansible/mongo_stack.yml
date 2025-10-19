@@ -5,13 +5,13 @@
   roles:
     - oci-swarm-node
   vars:
-    tcp_ports:
+    ufw_tcp_ports:
       - 22  # SSH
       - 7946  # Docker Swarm
       - 4789  # Docker Swarm
       - 2377  # Docker Swarm
       - 27017  # MongoDB
-    udp_ports:
+    ufw_udp_ports:
       - 22  # SSH
       - 7946  # Docker Swarm
       - 4789  # Docker Swarm
