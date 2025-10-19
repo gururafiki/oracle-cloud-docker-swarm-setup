@@ -97,7 +97,7 @@ or combined to perform all together:
 ```bash
 cd terraform && terraform destroy -auto-approve  && sleep 10s && terraform init -upgrade && terraform plan -out swarm.plan &&  terraform apply swarm.plan && sleep 60s && cd ../ansible && ./generate_inventory.sh default && export ANSIBLE_HOST_KEY_CHECKING=false && ansible-playbook -i default.inventory.ini portainer_stack.yml -u ubuntu --private-key ~/.ssh/oci_key && cd ..
 ```
-or the same combined, but for dokploy (make sure you have `[dokploy]` host defined in *inventory.ini*)
+or the same combined, but for dokploy
 ```bash
 cd terraform && terraform destroy -auto-approve  && sleep 10s && terraform init -upgrade && terraform plan -out swarm.plan &&  terraform apply swarm.plan && sleep 60s && cd ../ansible && ./generate_inventory.sh default && export ANSIBLE_HOST_KEY_CHECKING=false && ansible-playbook -i default.inventory.ini dokploy.yml -u ubuntu --private-key ~/.ssh/oci_key && cd ..
 ```
@@ -110,8 +110,8 @@ That's it. Now you can access your services using IP of any node from the swarm.
 
 Depending on playbook you selected you will be able to access different endpoints:
 1. For *dokploy.yml* -> http://<public_ip>:3000 - HTTP access to Dokploy
-2. For *portainer_stack.yml* http://<public_ip>:9080 - HTTP access to Portainer
-3. For *portainer_stack.yml* https://<public_ip>:9443 - HTTPS access to Portainer
+2. For *portainer_stack.yml* http://<public_ip>:80 - HTTP access to Portainer
+3. For *portainer_stack.yml* https://<public_ip>:443 - HTTPS access to Portainer
 4. For *mongo_stack.yml* mongodb://root:mongo_root_password@<public_ip>:27017/ - MongoDB connection string
 
 
