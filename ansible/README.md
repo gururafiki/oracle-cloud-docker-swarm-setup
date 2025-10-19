@@ -42,15 +42,23 @@ This playbook is a good start as it provides clean Docker Swarm cluster with Por
 #### 1. Dokploy and Remote Docker Swarm Cluster - *dokploy.yml*
 Simple playbook to create:
 - Docker Swarm with 1 manager and N workers
-- Separate instance Dokploy instance
+- Dokploy Service deployed to Docker Swarm Cluster
 
 After running this playbook - you will be able to access Dokploy from your browser. Navigate to `http://<public_ip>:3000`. After creating account you will need to:
 * Create Docker Registry 
 * Add SSH Key
-* Add Remote Server (Manger of the Swarm)
+* (if you want to host apps within Dokploy cluster) - Register cluster
+* (if you want to use separate from Dokploy instance cluster for your apps) - Add Remote Server (Create Docker Swarm Cluster as a Remote server for Dokploy using playbook below, keep in mind - you will need separate inventory with separate set of instances for it)
 
 ##### Why is this playbook here?
 This playbook provides comprehensive setup to start developing services in your new Docker Swarm. Dokploy is powerful solution with tons of templates and integration with GitHub that will allow you convert your ideas to production-ready solutions. Keep in-mind that commercial use of Dokploy is subject to [Dokploy License](https://github.com/Dokploy/dokploy/blob/canary/LICENSE.MD)
+
+#### 1.1. Docker Swarm Cluster as a Remote server for Dokploy - *dokploy_remote_swarm.yml*
+Simple playbook to create:
+- Docker Swarm cluster with 1 manager and N workers.
+
+##### Why is this playbook here?
+This playbook provides clean Docker Swarm cluster without any services that can be used as remote server for Dokploy.
 
 #### 2. Dokploy Docker Swarm Cluster - *dokploy_stack.yml*
 Simple playbook to create:
@@ -148,11 +156,6 @@ Example:
 123.45.67.8 private_ip=10.0.1.14
 
 ```
-
-#### **Imporatant**: Depending on playbook you want to run you may want to adjust invetory:
-- For *dokploy.yml* - you will need 1 `[manager]`, 1 `[dokploy]` and N `[workers]`
-- For *mongo_stack.yml* - you will need 1 `[manager]` and N `[workers]`
-- For *dokploy_stack.yml* - you will need 1 `[manager]` and N `[workers]`
 
 ### (Optional: if you want to deploy *dokploy_stack.yml*) 5. Prepare docker-compose.yaml and secrets.yaml
 1. Rename *../docker-stack/templates/dokploy/secrets.example.yaml* to *../docker-stack/templates/dokploy/secrets.yaml* and fill with desired values.

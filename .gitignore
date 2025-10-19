@@ -8,5 +8,5 @@ terraform/update_envs.sh
 terraform/hosts
 *secrets.yaml
 ansible/*inventory.ini
-ansible/generate_inventories.sh
+ansible/apply_playbooks.sh
 *.env

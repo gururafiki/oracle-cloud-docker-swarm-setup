@@ -9,11 +9,11 @@
       - 22  # SSH
       - 80  # Default HTTP
       - 443  # Default HTTPS
-      - 3000  # Next.js Dokploy Server for initial setup
       - 996  # HTTPS connections for a Docker Registry
       - 7946  # Docker Swarm
       - 4789  # Docker Swarm
       - 2377  # Docker Swarm
+      - 27017  # MongoDB
     udp_ports:
       - 22  # SSH
       - 7946  # Docker Swarm
@@ -26,7 +26,7 @@
   become: true
   roles:
     - swarm_manager
-    - dokploy
+    - dokploy_remote_server
 
 - hosts: workers
   become: true

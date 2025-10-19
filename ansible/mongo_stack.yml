@@ -4,6 +4,20 @@
   gather_facts: true  # Enable fact gathering for all hosts
   roles:
     - oci-swarm-node
+  vars:
+    tcp_ports:
+      - 22  # SSH
+      - 7946  # Docker Swarm
+      - 4789  # Docker Swarm
+      - 2377  # Docker Swarm
+      - 27017  # MongoDB
+    udp_ports:
+      - 22  # SSH
+      - 7946  # Docker Swarm
+      - 4789  # Docker Swarm
+      - 2377  # Docker Swarm
+    ssh_authorized_key: "{{ lookup('file', '~/.ssh/oci_key.pub') }}"
+    ssh_permit_root_login: "no"
 
 - hosts: manager
   become: true
