@@ -15,7 +15,7 @@ Contains defintion to setup:
 * Internet Gateway
 * Route table
 * Subnet
-* Security rules to allow traffic over the ports (may require customization to meet your needs, currently exposes ports for MongoDB, Next.js server and HTTP/HTTPS)
+* Security rules to allow traffic over the ports
 * Instances
 
 #### *variables.tf* - Variables definitions:
@@ -100,7 +100,19 @@ source ~/.zshrc
 
 We are using `operating_system = "Canonical Ubuntu"`, you can try `operating_system = "Oracle Linux"` or any other opearting system that meets your needs.
 
-#### 7. (Optional) Update instance configuration to spin up 4 ARM instances instead of 2 AMD instances
+#### 6. (Optional) Update ports you want to allow external traffic depending on your needs
+
+Following ports are open to public by default:
+```hcl
+public_tcp_ports = [80, 27017, 443, 3000]
+public_udp_ports = []
+```
+However you may add/remove ports depending on your needs. In the example configuration there are few opened ports:
+- 27017 - used by Mongo
+- 80/443 - default ports for HTTP/HTTPS traffic
+- 3000 - used by Dokploy
+
+#### 8. (Optional) Update instance configuration to spin up 4 ARM instances instead of 2 AMD instances
 
 > *Important*: ARM based instances are hard to get due to limited capacity with Free tier accounts. In order to solve this problem you can create simple script to apply terraform in loop or upgrade your Account to *Pay As You Go* plan.
 
@@ -159,7 +171,7 @@ terraform apply swarm.plan
 ```
 
 
-### (Optional) 4. Setting up multiple workspaces
+### 4. (Optional) Setting up multiple workspaces
 
 In some cases you would like to deploy resources to multiple environments/stages. To achive this you can use workspaces.
 

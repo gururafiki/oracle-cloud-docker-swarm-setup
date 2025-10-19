@@ -135,7 +135,7 @@ ansible --version
 # Should show: ansible [core 2.16.5]
 ```
 
-### Step 4: Create inventory (*inventory.ini*)
+### Step 3: Create inventory (*inventory.ini*)
 
 This script has one positional argument which corresponds to terraform workspace name (default terraform workspace is called `default`)
 If you want to use instances created with terraform - generate inventory from terraform outputs:
@@ -157,16 +157,19 @@ Example:
 
 ```
 
-### (Optional: if you want to deploy *dokploy_stack.yml*) 5. Prepare docker-compose.yaml and secrets.yaml
+### 4. (Optional: if you want to deploy *dokploy_stack.yml*) Prepare docker-compose.yaml and secrets.yaml
 1. Rename *../docker-stack/templates/dokploy/secrets.example.yaml* to *../docker-stack/templates/dokploy/secrets.yaml* and fill with desired values.
 
 
-### (Optional: if you want to deploy *mongo_stack.yml*) 5. Prepare docker-compose.yaml and secrets.yaml
+### 5. (Optional: if you want to deploy *mongo_stack.yml*) Prepare docker-compose.yaml and secrets.yaml
 1. Rename *../docker-stack/templates/mongo/secrets.example.yaml* to *../docker-stack/templates/mongo/secrets.yaml* and fill with desired values.
 2. Update *../docker-stack/templates/mongo/mongodb-init/mongo-init.js* to strong password for user we are going to create. (TODO: this should be moved to secrets as well, contributions are welcome)
 
 
-### 6. Run Ansible Playbook
+### 6. (Optional: if you want to setup dokploy) Validate variables setup
+Dokploy requires root login for remote servers. So check the playbook you want to deploy and if `ssh_permit_root_login` is set to `yes` then customize `ssh_authorized_key` variable to point to public key you want to use for root user to login to instances.
+
+### 7. Run Ansible Playbook
 
 > *Imporant*: if you haven't connected to instances before over SSH - you may need to approve that you want to connect to unknown host. This can be mitigated by setting env variable: `ANSIBLE_HOST_KEY_CHECKING=false` or creating/updating `~/.ansible.cfg` with `host_key_checking = False`.
 > *Important*: `<ssh_private_key_path>` should point to private key that is that pair for `ssh_public_key_path` from terraform configuration.

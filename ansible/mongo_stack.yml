@@ -16,7 +16,6 @@
       - 7946  # Docker Swarm
       - 4789  # Docker Swarm
       - 2377  # Docker Swarm
-    ssh_authorized_key: "{{ lookup('file', '~/.ssh/oci_key.pub') }}"
     ssh_permit_root_login: "no"
 
 - hosts: manager

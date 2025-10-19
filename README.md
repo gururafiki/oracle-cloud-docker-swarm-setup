@@ -12,7 +12,7 @@ oracle-cloud-docker-swarm-setup/
 ├── terraform/                # Terraform Infrastructure as Code for Oracle Cloud to setup compute instances and network
 ├── ansible/                  # Ansible Playbooks for Docker Swarm cluster creation and services deployment
 ├── docker-stack/             # Docker Stack templates that can be run deployed to Docker Swarm Cluster
-└── docker-compose/           # Example template for secrets and configuration variables
+└── docker-compose/           # Example docker compose templates that can be deployed to Dokploy
 ```
 
 ---
@@ -100,6 +100,10 @@ cd terraform && terraform destroy -auto-approve  && sleep 10s && terraform init 
 or the same combined, but for dokploy
 ```bash
 cd terraform && terraform destroy -auto-approve  && sleep 10s && terraform init -upgrade && terraform plan -out swarm.plan &&  terraform apply swarm.plan && sleep 60s && cd ../ansible && ./generate_inventory.sh default && export ANSIBLE_HOST_KEY_CHECKING=false && ansible-playbook -i default.inventory.ini dokploy.yml -u ubuntu --private-key ~/.ssh/oci_key && cd ..
+```
+or the same combined, but for specific terraform workspace (assumes that *test* workspace is already created and *terraform/test.tfvars* file exists)
+```bash
+cd terraform && terraform workspace select test && terraform destroy -auto-approve  && sleep 10s && terraform init -upgrade && terraform plan -out swarm.plan -var-file="test.tfvars" &&  terraform apply swarm.plan && sleep 60s && cd ../ansible && ./generate_inventory.sh test && export ANSIBLE_HOST_KEY_CHECKING=false && ansible-playbook -i test.inventory.ini portainer_stack.yml -u ubuntu --private-key ~/.ssh/oci_key && cd ..
 ```
 
 ### 6. Test your endpoints

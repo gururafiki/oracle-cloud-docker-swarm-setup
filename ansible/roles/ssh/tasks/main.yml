@@ -24,6 +24,7 @@
     user: root
     state: present
     key: "{{ authorized_key }}"
+  when: permit_root_login == "yes"
 
 - name: Restart SSH
   service:
