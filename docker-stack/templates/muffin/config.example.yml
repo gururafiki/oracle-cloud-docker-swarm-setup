@@ -1,0 +1,39 @@
+---
+# Muffin stack — NON-SECRET deployment config.
+#
+# Copy to `config.yml` (gitignored) and adjust. Loaded by `muffin_stack.yml` (include_vars)
+# alongside secrets.yaml, then rendered into the stack's environment. Nothing secret goes here —
+# API keys / passwords / tokens live in secrets.yaml.
+
+# === Public DNS / TLS ===
+domain: "example.com"           # served at https://<chat_subdomain>.<domain> and https://<api_subdomain>.<domain>
+chat_subdomain: "chat"
+api_subdomain: "api"
+acme_email: "you@example.com"   # Let's Encrypt account email (cert-expiry notices)
+
+# === Container registry (GHCR) ===
+registry: "ghcr.io/<github-user>/muffin"   # tags: <registry>:api, :openbb, :ui
+registry_server: "ghcr.io"
+registry_username: "<github-user>"
+
+# === Muffin LLM config (non-secret; API keys are in secrets.yaml) ===
+llm_provider: "openrouter"                 # openai | anthropic | openrouter
+openai_site_url: "https://openrouter.ai/api/v1"
+orchestrator_models: "anthropic/claude-sonnet-4-6"
+collector_models: "anthropic/claude-haiku-4-5"
+reasoner_models: "anthropic/claude-sonnet-4-6"
+summariser_model: "anthropic/claude-haiku-4-5"
+llm_sdk_retries: 6
+temperature: 0.1
+
+# === Observability (non-secret bits; keys are in secrets.yaml) ===
+langsmith_tracing: "true"
+langsmith_endpoint: "https://api.smith.langchain.com"
+langsmith_project: "muffin-prod"
+langfuse_base_url: "https://cloud.langfuse.com"
+
+# === Misc ===
+firecrawl_api_key: "local"      # any non-empty string for self-hosted Firecrawl (no auth)
+# Debug fallback user id so agent-chat-ui (no configurable.user_id) can use persistent memory.
+# Set to "" once LangGraph custom auth (auth.py) is wired for real per-user isolation.
+memory_debug_user_id: "shared"

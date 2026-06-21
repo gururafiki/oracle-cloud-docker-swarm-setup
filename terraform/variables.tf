@@ -77,3 +77,53 @@ variable "public_udp_ports" {
   description = "Public UDP ports"
   type        = set(number)
 }
+
+# === Cloudflare (optional — see cloudflare.tf). Empty cloudflare_domain disables all CF resources. ===
+variable "cloudflare_domain" {
+  description = "Apex domain managed in Cloudflare (e.g. rafiki.guru). Empty string disables Cloudflare."
+  type        = string
+  default     = ""
+}
+
+variable "cloudflare_api_token" {
+  description = "Cloudflare API token (Zone:DNS:Edit + Zone:Read + Account Access: Apps/Policies/Service Tokens: Edit)."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "cloudflare_zone_id" {
+  description = "Cloudflare Zone ID for cloudflare_domain (zone overview page → API section)."
+  type        = string
+  default     = ""
+}
+
+variable "cloudflare_account_id" {
+  description = "Cloudflare Account ID (zone overview page → API section)."
+  type        = string
+  default     = ""
+}
+
+variable "cloudflare_chat_subdomain" {
+  description = "Subdomain for the chat UI."
+  type        = string
+  default     = "chat"
+}
+
+variable "cloudflare_api_subdomain" {
+  description = "Subdomain for the LangGraph API."
+  type        = string
+  default     = "api"
+}
+
+variable "cloudflare_access_emails" {
+  description = "Emails allowed through Cloudflare Access (Zero Trust)."
+  type        = list(string)
+  default     = []
+}
+
+variable "cloudflare_create_service_token" {
+  description = "Create a Cloudflare Access service token (needs 'Access: Service Tokens: Edit' on the API token)."
+  type        = bool
+  default     = false
+}

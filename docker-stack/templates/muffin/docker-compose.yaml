@@ -1,0 +1,432 @@
+# Muffin Agent — Docker Swarm stack (ARM64 / OCI Always-Free single node).
+#
+# This file is rendered by Ansible (`muffin_stack.yml`) via the `template:` module:
+#   {{ '{{' }} ... {{ '}}' }} placeholders are filled from secrets.yaml before
+#   `docker stack deploy`. Do not run `docker stack deploy` on this file directly.
+#
+# Exposure: ONLY `traefik` publishes host ports (80/443). With
+# providers.swarm.exposedByDefault=false (see traefik.yml), a service is routable
+# only if it carries `traefik.enable=true` labels under `deploy.labels` — which
+# only `agent-chat-ui` and `langgraph-api` do. Every MCP / infra service stays
+# internal on the `muffin-net` overlay and is unreachable from the internet.
+version: "3.8"
+
+# ---------------------------------------------------------------------------
+# traefik.yml and config.toml are bind-mounted from /home/ubuntu (staged by
+# Ansible) rather than declared as Swarm `configs:` — Swarm configs are immutable
+# and break redeploys when the file changes. Bind mounts stay editable (single node).
+
+secrets:
+  postgres_password:
+    external: true               # docker secret create postgres_password
+  firecrawl_postgres_password:
+    external: true
+  cf_dns_api_token:
+    external: true               # Cloudflare Zone:DNS:Edit token for Traefik DNS-01
+
+volumes:
+  langgraph-data:
+  firecrawl-postgres-data:
+  traefik-acme:
+
+networks:
+  muffin-net:
+    name: muffin-net             # fixed name (no stack prefix) so Traefik's provider.network matches
+    driver: overlay
+    attachable: true
+
+# ===========================================================================
+services:
+
+  # --- Ingress: the only service exposed to the internet ------------------
+  traefik:
+    # v3.6.1+ negotiates the Docker API version; older Traefik pins 1.24 which Docker 29
+    # (min API 1.40+) rejects, so the swarm provider finds no routers and issues no certs.
+    image: traefik:v3.6.1
+    command:
+      - "--configFile=/etc/traefik/traefik.yml"
+    ports:
+      - published: 80
+        target: 80
+        protocol: tcp
+        mode: host
+      - published: 443
+        target: 443
+        protocol: tcp
+        mode: host
+    environment:
+      # lego reads the Cloudflare token from this file for the DNS-01 challenge
+      CF_DNS_API_TOKEN_FILE: /run/secrets/cf_dns_api_token
+    secrets:
+      - cf_dns_api_token
+    volumes:
+      - /home/ubuntu/traefik.yml:/etc/traefik/traefik.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-acme:/letsencrypt
+    networks:
+      - muffin-net
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+      restart_policy:
+        condition: any
+      resources:
+        limits:
+          memory: 256M
+
+  # --- LangGraph agent server (EXPOSED via Traefik: api.<domain>) ---------
+  langgraph-api:
+    image: {{ registry }}:api
+    environment:
+      # --- wiring (internal service URLs) ---
+      REDIS_URI: redis://langgraph-redis:6379
+      DATABASE_URI: postgres://postgres:{{ postgres_password }}@langgraph-postgres:5432/postgres?sslmode=disable
+      OPENBB_MCP_URL: http://openbb-mcp:8001/mcp
+      OPENSANDBOX_URL: opensandbox-server:8080
+      FIRECRAWL_MCP_URL: http://firecrawl-mcp:3000/mcp
+      SEARXNG_URL: http://searxng:8080
+      # --- secrets (from secrets.yaml) ---
+      OPENAI_API_KEY: "{{ openai_api_key | default(openrouter_api_key) }}"
+      OPENROUTER_API_KEY: "{{ openrouter_api_key }}"
+      LANGSMITH_API_KEY: "{{ langsmith_api_key }}"
+      LANGFUSE_SECRET_KEY: "{{ langfuse_secret_key | default('') }}"
+      LANGFUSE_PUBLIC_KEY: "{{ langfuse_public_key | default('') }}"
+      # --- non-secret config (from config.yml) ---
+      LLM_PROVIDER: "{{ llm_provider | default('openrouter') }}"
+      OPENAI_SITE_URL: "{{ openai_site_url | default('https://openrouter.ai/api/v1') }}"
+      ORCHESTRATOR_MODELS: "{{ orchestrator_models | default('') }}"
+      COLLECTOR_MODELS: "{{ collector_models | default('') }}"
+      REASONER_MODELS: "{{ reasoner_models | default('') }}"
+      SUMMARISER_MODEL: "{{ summariser_model | default('') }}"
+      LLM_SDK_RETRIES: "{{ llm_sdk_retries | default(6) }}"
+      TEMPERATURE: "{{ temperature | default(0.1) }}"
+      LANGSMITH_TRACING: "{{ langsmith_tracing | default('false') }}"
+      LANGSMITH_ENDPOINT: "{{ langsmith_endpoint | default('https://api.smith.langchain.com') }}"
+      LANGSMITH_PROJECT: "{{ langsmith_project | default('muffin') }}"
+      LANGFUSE_BASE_URL: "{{ langfuse_base_url | default('https://cloud.langfuse.com') }}"
+      # Debug fallback so agent-chat-ui (which doesn't set configurable.user_id)
+      # can use persistent memory. Once LangGraph custom auth (auth.py) is wired,
+      # REMOVE this for real per-user memory isolation.
+      MEMORY_DEBUG_USER_ID: "{{ memory_debug_user_id | default('shared') }}"
+    networks:
+      - muffin-net
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/ok')\" || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+      resources:
+        limits:
+          memory: 3G
+      labels:
+        - "traefik.enable=true"
+        - "traefik.swarm.network=muffin-net"
+        - "traefik.http.routers.api.rule=Host(`{{ api_subdomain | default('api') }}.{{ domain }}`)"
+        - "traefik.http.routers.api.entrypoints=websecure"
+        - "traefik.http.routers.api.tls.certresolver=cloudflare"
+        - "traefik.http.services.api.loadbalancer.server.port=8000"
+        # CORS so the browser chat UI (different subdomain) can call the API
+        - "traefik.http.routers.api.middlewares=api-cors"
+        - "traefik.http.middlewares.api-cors.headers.accessControlAllowOriginList=https://{{ chat_subdomain | default('chat') }}.{{ domain }}"
+        - "traefik.http.middlewares.api-cors.headers.accessControlAllowMethods=GET,POST,PUT,PATCH,DELETE,OPTIONS"
+        - "traefik.http.middlewares.api-cors.headers.accessControlAllowHeaders=*"
+        - "traefik.http.middlewares.api-cors.headers.accessControlAllowCredentials=true"
+        - "traefik.http.middlewares.api-cors.headers.accessControlMaxAge=86400"
+
+  # --- Chat UI (EXPOSED via Traefik: chat.<domain>) -----------------------
+  agent-chat-ui:
+    image: {{ registry }}:ui
+    environment:
+      # Server-side API proxy target (runtime). The UI is built with NEXT_PUBLIC_API_URL=/api, so
+      # the browser calls same-origin /api and the Next server proxies here over the overlay.
+      LANGGRAPH_API_URL: http://langgraph-api:8000
+    networks:
+      - muffin-net
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+      resources:
+        limits:
+          memory: 512M
+      labels:
+        - "traefik.enable=true"
+        - "traefik.swarm.network=muffin-net"
+        - "traefik.http.routers.chat.rule=Host(`{{ chat_subdomain | default('chat') }}.{{ domain }}`)"
+        - "traefik.http.routers.chat.entrypoints=websecure"
+        - "traefik.http.routers.chat.tls.certresolver=cloudflare"
+        - "traefik.http.services.chat.loadbalancer.server.port=3000"
+
+  # --- LangGraph state + streaming (internal) -----------------------------
+  langgraph-postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      - langgraph-data:/var/lib/postgresql/data
+    networks:
+      - muffin-net
+    healthcheck:
+      test: pg_isready -U postgres
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+      restart_policy:
+        condition: any
+      resources:
+        limits:
+          memory: 1G
+
+  langgraph-redis:
+    image: redis:6
+    networks:
+      - muffin-net
+    healthcheck:
+      test: redis-cli ping
+      interval: 5s
+      timeout: 2s
+      retries: 5
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+      resources:
+        limits:
+          memory: 256M
+
+  # --- Market data: OpenBB MCP (internal) ---------------------------------
+  openbb-mcp:
+    image: {{ registry }}:openbb
+    environment:
+      # OpenBB provider API keys (from secrets.yaml). Add more providers as needed,
+      # e.g. POLYGON_API_KEY / FRED_API_KEY / ALPHA_VANTAGE_API_KEY — see extras/openbb/.env.example.
+      FMP_API_KEY: "{{ fmp_api_key | default('') }}"
+    networks:
+      - muffin-net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.create_connection(('localhost',8001),2); s.close()"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+      resources:
+        limits:
+          memory: 1536M
+
+  # --- Self-hosted meta-search (internal) ---------------------------------
+  searxng:
+    image: searxng/searxng:latest
+    volumes:
+      - /home/ubuntu/searxng:/etc/searxng:rw   # staged by Ansible
+    environment:
+      SEARXNG_SECRET_KEY: "{{ searxng_secret_key }}"
+    networks:
+      - muffin-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+      resources:
+        limits:
+          memory: 512M
+
+  # --- Python sandbox (internal; spawns sibling containers on host Docker) -
+  opensandbox-server:
+    image: opensandbox/server:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/ubuntu/config.toml:/etc/opensandbox/config.toml:ro
+    extra_hosts:
+      # Linux host: make host.docker.internal (used in config.toml) resolvable
+      - "host.docker.internal:host-gateway"
+    environment:
+      SANDBOX_API_KEY: "{{ opensandbox_api_key | default('') }}"
+      SANDBOX_CONFIG_PATH: /etc/opensandbox/config.toml
+      # Newer opensandbox refuses to start without an API key unless this ack is set.
+      # Safe here: the server is internal-only (no published port; reached only by langgraph-api
+      # over the overlay). Set SANDBOX_API_KEY (opensandbox_api_key) to remove the insecure flag.
+      OPENSANDBOX_INSECURE_SERVER: "{{ 'YES' if not opensandbox_api_key | default('') else 'NO' }}"
+    networks:
+      - muffin-net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+      restart_policy:
+        condition: any
+      resources:
+        limits:
+          memory: 512M
+
+  # --- Firecrawl cluster (all internal) -----------------------------------
+  firecrawl-redis:
+    image: redis:alpine
+    networks:
+      - muffin-net
+    healthcheck:
+      test: redis-cli ping
+      interval: 5s
+      timeout: 2s
+      retries: 5
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+      resources:
+        limits:
+          memory: 256M
+
+  firecrawl-rabbitmq:
+    image: rabbitmq:3
+    networks:
+      - muffin-net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+      resources:
+        limits:
+          memory: 512M
+
+  firecrawl-playwright:
+    image: ghcr.io/firecrawl/playwright-service:latest
+    environment:
+      PORT: "3000"
+      BLOCK_MEDIA: "true"
+    networks:
+      - muffin-net
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+      resources:
+        limits:
+          memory: 2G
+
+  firecrawl-postgres:
+    # arm64 rebuild of firecrawl's nuq-postgres (upstream ghcr.io/firecrawl/nuq-postgres is
+    # amd64-only). Built by muffin-agent CI (.github/workflows/build-nuq-postgres.yml).
+    image: {{ registry }}:nuq-postgres
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/firecrawl_postgres_password
+    secrets:
+      - firecrawl_postgres_password
+    volumes:
+      - firecrawl-postgres-data:/var/lib/postgresql/data
+    networks:
+      - muffin-net
+    healthcheck:
+      test: pg_isready -U postgres
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+      restart_policy:
+        condition: any
+      resources:
+        limits:
+          memory: 512M
+
+  firecrawl-api:
+    image: ghcr.io/firecrawl/firecrawl
+    command: node dist/src/harness.js --start-docker
+    environment:
+      HOST: "0.0.0.0"
+      PORT: "3002"
+      ENV: production
+      REDIS_URL: redis://firecrawl-redis:6379
+      REDIS_RATE_LIMIT_URL: redis://firecrawl-redis:6379
+      PLAYWRIGHT_MICROSERVICE_URL: http://firecrawl-playwright:3000/scrape
+      USE_DB_AUTHENTICATION: "false"
+      SEARXNG_ENDPOINT: http://searxng:8080
+      NUQ_RABBITMQ_URL: amqp://firecrawl-rabbitmq:5672
+      NUM_WORKERS_PER_QUEUE: "2"   # lowered from 8 to fit the 24 GB budget
+      NUQ_DATABASE_URL: postgresql://postgres:{{ firecrawl_postgres_password }}@firecrawl-postgres:5432/postgres
+    networks:
+      - muffin-net
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3002/',r=>{process.exit(r.statusCode===200?0:1)})"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+      resources:
+        limits:
+          # firecrawl spawns ~10 node workers (api + worker + 5 nuq-workers + prefetch +
+          # reconciler + extract); 2G OOM-killed a worker (exit 137). VM has ample headroom.
+          memory: 4G
+
+  firecrawl-mcp:
+    image: node:22-slim
+    command: sh -c "npx --yes firecrawl-mcp"
+    environment:
+      HTTP_STREAMABLE_SERVER: "true"
+      HOST: 0.0.0.0
+      PORT: "3000"
+      FIRECRAWL_API_URL: http://firecrawl-api:3002
+      FIRECRAWL_API_KEY: "{{ firecrawl_api_key | default('local') }}"
+    networks:
+      - muffin-net
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').request({host:'localhost',port:3000,path:'/mcp',method:'POST'},r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1)).end()"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 10s
+      resources:
+        limits:
+          memory: 512M

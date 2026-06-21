@@ -4,6 +4,10 @@ terraform {
       source  = "oracle/oci"
       version = "5.0.0"
     }
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 5.0"
+    }
   }
 }
 
@@ -13,6 +17,12 @@ provider "oci" {
   private_key_path = var.private_key_path
   fingerprint      = var.fingerprint
   region           = var.region
+}
+
+# Used only when var.cloudflare_domain is set (see cloudflare.tf). The token is not
+# read unless a Cloudflare resource is created, so the placeholder is harmless when disabled.
+provider "cloudflare" {
+  api_token = var.cloudflare_api_token
 }
 
 data "oci_identity_availability_domains" "ads" {
@@ -97,7 +107,7 @@ resource "oci_core_subnet" "subnet" {
   display_name   = "subnet"
   dns_label      = var.name_prefix
   route_table_id = oci_core_route_table.rt.id
-  
+
   # Combine default security list with custom rules
   security_list_ids = [
     data.oci_core_security_lists.default.security_lists[0].id,

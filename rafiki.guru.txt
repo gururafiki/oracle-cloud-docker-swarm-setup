@@ -1,0 +1,57 @@
+;;
+;; Domain:     rafiki.guru.
+;; Exported:   2026-06-18 23:35:52
+;;
+;; This file is intended for use for informational and archival
+;; purposes ONLY and MUST be edited before use on a production
+;; DNS server.  In particular, you must:
+;;   -- update the SOA record with the correct authoritative name server
+;;   -- update the SOA record with the contact e-mail address information
+;;   -- update the NS record(s) with the authoritative name servers for this domain.
+;;
+;; For further information, please consult the BIND documentation
+;; located on the following website:
+;;
+;; http://www.isc.org/
+;;
+;; And RFC 1035:
+;;
+;; http://www.ietf.org/rfc/rfc1035.txt
+;;
+;; Please note that we do NOT offer technical support for any use
+;; of this zone data, the BIND name server, or any other third-party
+;; DNS software.
+;;
+;; Use at your own risk.
+;; SOA Record
+rafiki.guru	3600	IN	SOA	monroe.ns.cloudflare.com. dns.cloudflare.com. 2053349235 10000 2400 604800 3600
+
+;; NS Records
+rafiki.guru.	86400	IN	NS	monroe.ns.cloudflare.com.
+rafiki.guru.	86400	IN	NS	sonny.ns.cloudflare.com.
+
+;; A Records
+beeleaf.rafiki.guru.	1	IN	A	84.8.157.30 ; cf_tags=cf-proxied:true
+dokploy.rafiki.guru.	1	IN	A	141.147.84.174 ; cf_tags=cf-proxied:true
+minio.rafiki.guru.	1	IN	A	84.8.157.30 ; cf_tags=cf-proxied:true
+muffin-appwrite.rafiki.guru.	1	IN	A	144.21.51.250 ; cf_tags=cf-proxied:true
+muffin-supabase.rafiki.guru.	1	IN	A	144.21.51.250 ; cf_tags=cf-proxied:true
+pocketbase.rafiki.guru.	1	IN	A	144.21.51.250 ; cf_tags=cf-proxied:true
+portainer.rafiki.guru.	60	IN	A	130.162.186.229 ; cf_tags=cf-proxied:false
+rafiki.guru.	1	IN	A	130.162.186.229 ; Updated from 162.255.119.63 cf_tags=cf-proxied:true
+s3.rafiki.guru.	1	IN	A	84.8.157.30 ; cf_tags=cf-proxied:true
+yonkers.rafiki.guru.	1	IN	A	84.8.157.30 ; cf_tags=cf-proxied:true
+
+;; MX Records
+rafiki.guru.	1	IN	MX	10 eforward3.registrar-servers.com.
+rafiki.guru.	1	IN	MX	10 eforward2.registrar-servers.com.
+rafiki.guru.	1	IN	MX	10 eforward1.registrar-servers.com.
+rafiki.guru.	1	IN	MX	15 eforward4.registrar-servers.com.
+rafiki.guru.	1	IN	MX	20 eforward5.registrar-servers.com.
+
+;; NS Records
+rafiki.guru.	1	IN	NS	dns2.registrar-servers.com.
+rafiki.guru.	1	IN	NS	dns1.registrar-servers.com.
+
+;; TXT Records
+rafiki.guru.	1	IN	TXT	"v=spf1 include:spf.efwd.registrar-servers.com ~all"

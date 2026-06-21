@@ -1,0 +1,125 @@
+---
+# Deploy the Muffin Agent stack to a single-node OCI Always-Free Swarm.
+#
+# Prereqs on the control machine (your Mac), in docker-stack/templates/muffin/:
+#   - config.yml           (copy from config.example.yml — non-secret deploy config)
+#   - secrets.yaml         (copy from secrets.example.yaml — API keys / passwords / tokens)
+#   - config.toml          (cp ../../../../muffin-agent/extras/opensandbox/config.toml)
+#   - searxng/             (cp -r ../../../../muffin-agent/extras/searxng)
+# Plus: images built & pushed (GitHub Actions `build-images.yml`, or build-and-push.sh locally).
+#
+# Run from ansible/:
+#   ./generate_inventory.sh default
+#   export ANSIBLE_HOST_KEY_CHECKING=false
+#   ansible-playbook -i default.inventory.ini muffin_stack.yml -u ubuntu --private-key ~/.ssh/oci_key
+
+# --- 1. Harden every node + open Swarm/ingress ports ----------------------
+- hosts: all
+  become: true
+  gather_facts: true
+  roles:
+    - oci-swarm-node
+  vars:
+    ufw_tcp_ports:
+      - 22    # SSH
+      - 80    # Traefik HTTP (redirects to 443)
+      - 443   # Traefik HTTPS
+      - 7946  # Docker Swarm
+      - 4789  # Docker Swarm
+      - 2377  # Docker Swarm
+    ufw_udp_ports:
+      - 22    # SSH
+      - 7946  # Docker Swarm
+      - 4789  # Docker Swarm
+      - 2377  # Docker Swarm
+    ssh_permit_root_login: "no"
+
+# --- 2. Form the Swarm ----------------------------------------------------
+- hosts: manager
+  become: true
+  roles:
+    - swarm_manager
+
+- hosts: workers
+  become: true
+  roles:
+    - swarm_worker
+
+# --- 3. Stage config + env files onto the manager -------------------------
+- name: Stage Muffin runtime files
+  hosts: manager
+  become: true
+  vars:
+    muffin_template_dir: ../docker-stack/templates/muffin
+  tasks:
+    - name: Load non-secret config
+      include_vars:
+        file: "{{ muffin_template_dir }}/config.yml"
+
+    - name: Load secrets
+      include_vars:
+        file: "{{ muffin_template_dir }}/secrets.yaml"
+
+    - name: Stage opensandbox config.toml
+      copy:
+        src: "{{ muffin_template_dir }}/config.toml"
+        dest: /home/ubuntu/config.toml
+
+    - name: Stage SearxNG settings directory
+      copy:
+        src: "{{ muffin_template_dir }}/searxng/"
+        dest: /home/ubuntu/searxng/
+
+    - name: Render Traefik static config
+      template:
+        src: "{{ muffin_template_dir }}/traefik.yml"
+        dest: /home/ubuntu/traefik.yml
+
+    - name: Render the Swarm stack file
+      template:
+        src: "{{ muffin_template_dir }}/docker-compose.yaml"
+        dest: /home/ubuntu/docker-compose.yaml
+
+# --- 4. Registry login + Docker secrets -----------------------------------
+- name: Prepare registry auth and Docker secrets
+  hosts: manager
+  become: true
+  vars:
+    muffin_template_dir: ../docker-stack/templates/muffin
+  tasks:
+    - name: Load non-secret config
+      include_vars:
+        file: "{{ muffin_template_dir }}/config.yml"
+
+    - name: Load secrets
+      include_vars:
+        file: "{{ muffin_template_dir }}/secrets.yaml"
+
+    - name: Log in to the container registry (only if a password is set; public GHCR pulls anonymously)
+      shell: "echo {{ registry_password | quote }} | docker login {{ registry_server }} -u {{ registry_username | quote }} --password-stdin"
+      no_log: true
+      changed_when: true
+      when: registry_password | default('') | length > 0
+
+    - name: Create Docker secrets (idempotent)
+      shell: "echo -n {{ item.value | quote }} | docker secret create {{ item.name }} -"
+      no_log: true
+      register: secret_create
+      changed_when: "'already exists' not in (secret_create.stderr | default(''))"
+      failed_when:
+        - secret_create.rc != 0
+        - "'already exists' not in (secret_create.stderr | default(''))"
+      loop:
+        - { name: "postgres_password", value: "{{ postgres_password }}" }
+        - { name: "firecrawl_postgres_password", value: "{{ firecrawl_postgres_password }}" }
+        - { name: "cf_dns_api_token", value: "{{ cf_dns_api_token }}" }
+      loop_control:
+        label: "{{ item.name }}"
+
+# --- 5. Deploy the stack --------------------------------------------------
+- name: Deploy the Muffin stack
+  hosts: manager
+  become: true
+  tasks:
+    - name: docker stack deploy (with registry auth so the node can pull private images)
+      command: "docker stack deploy -c /home/ubuntu/docker-compose.yaml --with-registry-auth muffin"

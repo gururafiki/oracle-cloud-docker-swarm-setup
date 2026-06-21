@@ -1,0 +1,49 @@
+# Muffin Agent — Oracle Cloud Always-Free deployment vars.
+#
+# Copy to `muffin.tfvars` (gitignored) and fill in the OCI credentials.
+# Deploy with:  terraform apply -var-file="muffin.tfvars"
+#
+# This provisions ONE ARM Always-Free instance (VM.Standard.A1.Flex) that takes
+# the whole free ARM allowance (4 OCPU / 24 GB) — the muffin stack is too heavy
+# for the AMD micro shape. It becomes a single-node Docker Swarm manager.
+
+# === Oracle Cloud credentials (from your OCI tenancy / user API key) ===
+tenancy_ocid     = "<tenancy_ocid>"
+user_ocid        = "<user_ocid>"
+private_key_path = "<private_key_path>"   # OCI API signing key, e.g. ~/.oci/oci_api_key.pem
+fingerprint      = "<fingerprint>"
+region           = "<region>"             # e.g. eu-frankfurt-1
+compartment_ocid = "<compartment_ocid>"
+
+# === SSH access to the instance ===
+ssh_public_key_path = "<ssh_public_key_path>"   # e.g. ~/.ssh/oci_key.pub (pair used by Ansible --private-key)
+
+# === Instance configuration (ARM Always-Free) ===
+availability_domain = 0
+operating_system    = "Canonical Ubuntu"   # Ubuntu only — the Ansible roles assume apt + the `ubuntu` user
+name_prefix         = "muffin"
+shape               = "VM.Standard.A1.Flex"  # ARM. If A1 capacity is unavailable in your region, retry or switch AD.
+node_count          = 1
+ocpus               = 4
+memory_in_gbs       = 24
+
+# Only the Traefik reverse proxy is exposed. 80 redirects to 443; 443 serves the
+# UI + LangGraph API. SSH (22) is already allowed by the VCN's default security list.
+# All MCP / infra ports stay internal to the Swarm overlay and are NOT opened here.
+public_tcp_ports = [80, 443]
+public_udp_ports = []
+
+# === Cloudflare (terraform/cloudflare.tf) ===
+# Leave cloudflare_domain = "" to skip all Cloudflare resources (OCI-only deploy).
+# When set, Terraform creates proxied DNS A records <chat>/<api>.<domain> → the VM,
+# plus Zero-Trust Access apps/policies + a service token.
+cloudflare_domain         = "example.com"
+cloudflare_chat_subdomain = "chat"
+cloudflare_api_subdomain  = "api"
+cloudflare_access_emails  = ["you@example.com"] # allowed to pass Cloudflare Access
+# Zone ID + Account ID are on the Cloudflare zone Overview page (right sidebar → API).
+cloudflare_zone_id    = "<cloudflare_zone_id>"
+cloudflare_account_id = "<cloudflare_account_id>"
+# API token scopes: Zone:DNS:Edit + Zone:Read + Account → Access: Apps/Policies/Service Tokens: Edit.
+# Reuse the same token value as `cf_dns_api_token` in the muffin secrets.yaml (Traefik DNS-01).
+cloudflare_api_token = "<cloudflare_api_token>"

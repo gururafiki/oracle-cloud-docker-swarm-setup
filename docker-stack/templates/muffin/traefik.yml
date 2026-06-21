@@ -1,0 +1,51 @@
+# Traefik v3 static configuration for the Muffin Swarm stack.
+#
+# Rendered by Ansible (`{{ '{{' }} acme_email {{ '}}' }}` is filled from secrets.yaml)
+# and bind-mounted into the traefik service at /etc/traefik/traefik.yml.
+#
+# Dynamic routing is NOT defined here — it comes from `deploy.labels` on the
+# agent-chat-ui and langgraph-api services (the Swarm provider, below).
+
+global:
+  checkNewVersion: false
+  sendAnonymousUsage: false
+
+log:
+  level: INFO
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
+  websecure:
+    address: ":443"
+
+providers:
+  swarm:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false      # services are private unless they opt in with traefik.enable=true
+    network: muffin-net
+    refreshSeconds: 15
+
+certificatesResolvers:
+  cloudflare:
+    acme:
+      email: "{{ acme_email }}"
+      storage: /letsencrypt/acme.json
+      # DNS-01 works through Cloudflare's proxy and supports wildcards.
+      # The token is provided via CF_DNS_API_TOKEN_FILE (Docker secret) on the service.
+      dnsChallenge:
+        provider: cloudflare
+        resolvers:
+          - "1.1.1.1:53"
+          - "8.8.8.8:53"
+
+# Dashboard/API off by default (not exposed). Enable behind auth if you need it.
+api:
+  dashboard: false
+  insecure: false

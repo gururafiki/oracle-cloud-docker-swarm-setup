@@ -1,0 +1,8 @@
+# Runtime artifacts copied in from the muffin-agent repo before deploy (not secrets,
+# but environment-specific — keep them out of version control).
+config.toml
+searxng/
+
+# Filled deployment config + secrets (commit the .example files only).
+config.yml
+secrets.yaml

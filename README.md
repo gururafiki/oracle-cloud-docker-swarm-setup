@@ -117,6 +117,7 @@ Depending on playbook you selected you will be able to access different endpoint
 2. For *portainer_stack.yml* http://<public_ip>:80 - HTTP access to Portainer
 3. For *portainer_stack.yml* https://<public_ip>:443 - HTTPS access to Portainer
 4. For *mongo_stack.yml* mongodb://root:mongo_root_password@<public_ip>:27017/ - MongoDB connection string
+5. For *muffin_stack.yml* https://chat.<domain> (chat UI) and https://api.<domain> (LangGraph API) — full Muffin Agent stack behind Traefik + Cloudflare. See [docker-stack/templates/muffin/README.md](docker-stack/templates/muffin/README.md) for the end-to-end guide (build/push images, `muffin.tfvars`, Cloudflare DNS-01 TLS, and auth).
 
 
 ## Troubleshooting
